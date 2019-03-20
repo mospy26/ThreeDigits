@@ -1,7 +1,7 @@
 import sys
 
 class State:
-	def __init__(self, state, parent, heuristic):
+	def __init__(self, state, parent = None, heuristic = 0):
 		self.state = state
 		self.parent = parent
 		self.heuristic = heuristic
@@ -11,7 +11,7 @@ class State:
 		return self.state
 
 	def __eq__(self, other):
-		return self.state == other.state and self.children == other.children
+		return self.state == other.state and self.children == other.children and self.parent.state == other.parent.state
 
 	def next(self, direction, arithmetic = "sub"):
 		if (self.state[0], direction, arithmetic) in [("0", 2, "sub"),("9", 2, "add")] or \
@@ -37,18 +37,18 @@ class State:
 		for i in digit_list:
 			child = self.next(i)
 			if child is not None:
-				self.children.append(self.next(i))
+				self.children.append(child)
 
 			child = self.next(i, "add")
 			if child is not None:
-				self.children.append(self.next(i, "add"))
+				self.children.append(child)
 		return
 
 class ThreeDigitsSolver:
 
 	def __init__(self, start_state, end_state, forbidden_states, algorithm):
-		self.start_state = State(start_state, None, 0)
-		self.end_state = State(end_state, None, 0)
+		self.start_state = State(start_state)
+		self.end_state = State(end_state)
 		self.algorithm = algorithm
 		self.forbidden_states = forbidden_states
 		self.result = [["No solution Found"], []]
@@ -65,32 +65,29 @@ class ThreeDigitsSolver:
 
 		expanded = []
 
-		while len(seen) != 0:
-			print(seen)
+		while len(seen) != 0 and len(expanded) <= 1000:
 			current_state = seen.pop(0)
 			current_state.generate_children()
 			expanded.append(current_state)
 
-			if self.end_state == current_state:
-						self.result[0].clear()
-						self.result[1] = expanded
-						st = current_state
-						while st is not None:
-							self.result[0].append(st)
-							st = st.parent
-						self.result[0].reverse()
-						return
+			if self.end_state.state == current_state.state:
+				self.result[0].clear()
+				self.result[1] = expanded
+				st = current_state
+				while st is not None:
+					self.result[0].append(st)
+					st = st.parent
+				self.result[0].reverse()
+				return
 
 			for state in current_state.children:
-				if state not in visited and state not in self.forbidden_states:
+				is_forbidden = False if self.forbidden_states is None else state in self.forbidden_states
+				if state not in visited and not is_forbidden:
 					seen.append(state)
 					visited.append(state)
 
-					if len(expanded) == 1000:
-						self.result[1] = expanded
-						return
-
-		return "No solution found"
+		self.result[1] = expanded
+		return
 
 
 	def DFS(self):
