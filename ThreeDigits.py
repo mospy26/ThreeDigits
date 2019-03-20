@@ -51,13 +51,13 @@ class ThreeDigitsSolver:
 		self.end_state = State(end_state)
 		self.algorithm = algorithm
 		self.forbidden_states = forbidden_states
-		self.result = [["No solution Found"], []]
+		self.result = ["No solution Found", ""]
 
 	def solve(self):
 		self.algorithms[self.algorithm](self)
 
 	def print_result(self):
-		print(repr(self.result[0])[1:-1] + "\n" + repr(self.result[1])[1:-1])
+		print(self.result[0] + "\n" + self.result[1])
 
 	def BFS(self):
 		seen = [self.start_state]
@@ -71,13 +71,13 @@ class ThreeDigitsSolver:
 			expanded.append(current_state)
 
 			if self.end_state.state == current_state.state:
-				self.result[0].clear()
-				self.result[1] = expanded
+				path = []
 				st = current_state
 				while st is not None:
-					self.result[0].append(st)
+					path.insert(0, st)
 					st = st.parent
-				self.result[0].reverse()
+				self.result[0] = repr(path).replace(" ", "")[1:-1]
+				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 				return
 
 			for state in current_state.children:
@@ -86,7 +86,8 @@ class ThreeDigitsSolver:
 					seen.append(state)
 					visited.append(state)
 
-		self.result[1] = expanded
+		self.result[0] = "No Solution Found"
+		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return
 
 
