@@ -11,27 +11,38 @@ class State:
 		return self.state
 
 	def __eq__(self, other):
-		print(self.state)
-		print(other.state)
 		return self.state == other.state and self.children == other.children
 
 	def next(self, direction, arithmetic = "sub"):
-		return State(str(int(self.state) + pow(10,direction)).zfill(3), self.parent, 0) if arithmetic is "add" else \
-			State(str(int(self.state) - pow(10,direction)).zfill(3), self.parent, 0)
+		if (self.state[0], direction, arithmetic) in [("0", 2, "sub"),("9", 2, "add")] or \
+			(self.state[1], direction, arithmetic) in [("0", 1, "sub"),("9", 1, "add")] or \
+			(self.state[2], direction, arithmetic) in [("0", 0, "sub"),("9", 0, "add")]:
+				return None
+		return State(str(int(self.state) + pow(10,direction)).zfill(3), self, 0) if arithmetic is "add" else \
+			State(str(int(self.state) - pow(10,direction)).zfill(3), self, 0)
 
 	def last_changed_digit(self):
-		if int(self.parent) - int(self.state) in [-100, 100]:
+		if int(self.parent.state) - int(self.state) in [-100, 100]:
 			return 2
-		if int(self.parent) - int(self.state) in [-10, 10]:
+		if int(self.parent.state) - int(self.state) in [-10, 10]:
 			return 1
-		if int(self.parent) - int(self.state) in [-1, 1]:
+		if int(self.parent.state) - int(self.state) in [-1, 1]:
 			return 0
 
 	def generate_children(self):
-		digit_list = [2,1,0] if self.parent is None else [2,1,0].last_changed_digit()
+		digit_list = [2,1,0]
+		if self.parent is not None:
+			digit_list.remove(self.last_changed_digit())
+
 		for i in digit_list:
-			self.children.append(self.next(i))
-			self.children.append(self.next(i, "add"))
+			child = self.next(i)
+			if child is not None:
+				self.children.append(self.next(i))
+
+			child = self.next(i, "add")
+			if child is not None:
+				self.children.append(self.next(i, "add"))
+		return
 
 class ThreeDigitsSolver:
 
@@ -40,26 +51,44 @@ class ThreeDigitsSolver:
 		self.end_state = State(end_state, None, 0)
 		self.algorithm = algorithm
 		self.forbidden_states = forbidden_states
-		self.result = ""
+		self.result = [["No solution Found"], []]
 
 	def solve(self):
 		self.algorithms[self.algorithm](self)
 
 	def print_result(self):
-		print(self.result)
+		print(repr(self.result[0])[1:-1] + "\n" + repr(self.result[1])[1:-1])
 
 	def BFS(self):
 		seen = [self.start_state]
 		visited = [self.start_state]
 
-		while len(seen) is not 0:
+		expanded = []
+
+		while len(seen) != 0:
+			print(seen)
 			current_state = seen.pop(0)
-			current_children = current_state.generate_children()
+			current_state.generate_children()
+			expanded.append(current_state)
+
+			if self.end_state == current_state:
+						self.result[0].clear()
+						self.result[1] = expanded
+						st = current_state
+						while st is not None:
+							self.result[0].append(st)
+							st = st.parent
+						self.result[0].reverse()
+						return
+
 			for state in current_state.children:
 				if state not in visited and state not in self.forbidden_states:
 					seen.append(state)
-					if state == self.end_state:
-						return seen
+					visited.append(state)
+
+					if len(expanded) == 1000:
+						self.result[1] = expanded
+						return
 
 		return "No solution found"
 
@@ -106,14 +135,14 @@ def main():
 
 	solver = None
 	try:
-		forbidden_states = lines[2].split(",")
-		solver = ThreeDigitsSolver(lines[0], lines[1], forbidden_states, algorithm)
+		forbidden = lines[2].split(",")
+		forbidden_states = [State(state, None, 0) for state in forbidden]
+		solver = ThreeDigitsSolver(lines[0], lines[1], forbidden_states[:], algorithm)
 	except:
 		solver = ThreeDigitsSolver(lines[0], lines[1], None, algorithm)
 
 	solver.solve()
 	solver.print_result()
-	print(lines)
 	return
 
 if __name__ == "__main__":
