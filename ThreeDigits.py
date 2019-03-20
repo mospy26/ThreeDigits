@@ -11,7 +11,8 @@ class State:
 		return self.state
 
 	def __eq__(self, other):
-		return self.state == other.state and self.children == other.children and self.parent.state == other.parent.state
+		is_same_parent = False if self.parent is None or other.parent is None else self.parent.state == other.parent.state
+		return self.state == other.state and self.children == other.children and is_same_parent
 
 	def next(self, direction, arithmetic = "sub"):
 		if (self.state[0], direction, arithmetic) in [("0", 2, "sub"),("9", 2, "add")] or \
@@ -29,20 +30,29 @@ class State:
 		if int(self.parent.state) - int(self.state) in [-1, 1]:
 			return 0
 
-	def generate_children(self):
+	def generate_children(self, forbidden_states):
 		digit_list = [2,1,0]
 		if self.parent is not None:
 			digit_list.remove(self.last_changed_digit())
 
 		for i in digit_list:
 			child = self.next(i)
-			if child is not None:
+			if child is not None and not self.is_forbidden(forbidden_states):
 				self.children.append(child)
 
 			child = self.next(i, "add")
-			if child is not None:
+			if child is not None and not self.is_forbidden(forbidden_states):
 				self.children.append(child)
 		return
+
+	def is_forbidden(self, forbidden_states):
+		if forbidden_states is None:
+			return False
+		for forbidden_state in forbidden_states:
+			if self.state == forbidden_state.state:
+				return True
+		return False
+
 
 class ThreeDigitsSolver:
 
@@ -67,7 +77,7 @@ class ThreeDigitsSolver:
 
 		while len(seen) != 0 and len(expanded) <= 1000:
 			current_state = seen.pop(0)
-			current_state.generate_children()
+			current_state.generate_children(self.forbidden_states)
 			expanded.append(current_state)
 
 			if self.end_state.state == current_state.state:
@@ -81,8 +91,7 @@ class ThreeDigitsSolver:
 				return
 
 			for state in current_state.children:
-				is_forbidden = False if self.forbidden_states is None else state in self.forbidden_states
-				if state not in visited and not is_forbidden:
+				if state not in visited:
 					seen.append(state)
 					visited.append(state)
 
