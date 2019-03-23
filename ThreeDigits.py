@@ -101,7 +101,37 @@ class ThreeDigitsSolver:
 
 
 	def DFS(self):
-		pass
+		seen = [self.start_state]
+		visited = [self.start_state]
+
+		expanded = []
+
+		while len(seen) != 0 and len(expanded) <= 1000:
+			current_state = seen.pop(0)
+			current_state.generate_children(self.forbidden_states)
+			expanded.append(current_state)
+
+			if self.end_state.state == current_state.state:
+				path = []
+				st = current_state
+				while st is not None:
+					path.insert(0, st)
+					st = st.parent
+				self.result[0] = repr(path).replace(" ", "")[1:-1]
+				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+				return
+
+			dfs_list = []
+			for state in current_state.children:
+				if state not in visited:
+					dfs_list.append(state)
+					visited.append(state)
+				for item in reversed(dfs_list):
+					seen.insert(0, item)
+
+		self.result[0] = "No Solution Found"
+		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+		return
 
 	def IDS(self):
 		pass
