@@ -14,7 +14,7 @@ class State:
 		is_same_parent = False if self.parent is None or other.parent is None else self.parent.state == other.parent.state
 		return self.state == other.state and self.children == other.children and is_same_parent
 
-	def next(self, direction, arithmetic = "sub"):
+	def _next(self, direction, arithmetic = "sub"):
 		if (self.state[0], direction, arithmetic) in [("0", 2, "sub"),("9", 2, "add")] or \
 			(self.state[1], direction, arithmetic) in [("0", 1, "sub"),("9", 1, "add")] or \
 			(self.state[2], direction, arithmetic) in [("0", 0, "sub"),("9", 0, "add")]:
@@ -22,7 +22,7 @@ class State:
 		return State(str(int(self.state) + pow(10,direction)).zfill(3), self, 0) if arithmetic is "add" else \
 			State(str(int(self.state) - pow(10,direction)).zfill(3), self, 0)
 
-	def last_changed_digit(self):
+	def _last_changed_digit(self):
 		if int(self.parent.state) - int(self.state) in [-100, 100]:
 			return 2
 		if int(self.parent.state) - int(self.state) in [-10, 10]:
@@ -33,19 +33,19 @@ class State:
 	def generate_children(self, forbidden_states):
 		digit_list = [2,1,0]
 		if self.parent is not None:
-			digit_list.remove(self.last_changed_digit())
+			digit_list.remove(self._last_changed_digit())
 
 		for i in digit_list:
-			child = self.next(i)
-			if child is not None and not self.is_forbidden(forbidden_states):
+			child = self._next(i)
+			if child is not None and not self._is_forbidden(forbidden_states):
 				self.children.append(child)
 
-			child = self.next(i, "add")
-			if child is not None and not self.is_forbidden(forbidden_states):
+			child = self._next(i, "add")
+			if child is not None and not self._is_forbidden(forbidden_states):
 				self.children.append(child)
 		return
 
-	def is_forbidden(self, forbidden_states):
+	def _is_forbidden(self, forbidden_states):
 		if forbidden_states is None:
 			return False
 		for forbidden_state in forbidden_states:
@@ -65,8 +65,9 @@ class ThreeDigitsSolver:
 
 	def solve(self):
 		self.algorithms[self.algorithm](self)
+		self._print_result()
 
-	def print_result(self):
+	def _print_result(self):
 		print(self.result[0] + "\n" + self.result[1])
 
 	def BFS(self):
@@ -245,7 +246,6 @@ def main():
 		solver = ThreeDigitsSolver(lines[0], lines[1], None, algorithm)
 
 	solver.solve()
-	solver.print_result()
 	return
 
 if __name__ == "__main__":
