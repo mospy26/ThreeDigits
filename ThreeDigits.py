@@ -13,8 +13,8 @@ class State:
 		return self.state
 
 	def __eq__(self, other):
-		is_same_parent = False if self.parent is None or other.parent is None else self.parent.state == other.parent.state
-		return self.state == other.state and self.children == other.children and is_same_parent
+		#is_same_parent = False if self.parent is None or other.parent is None else self.parent.state == other.parent.state
+		return self.state == other.state and self.children == other.children #and is_same_parent
 
 	def __lt__(self, other):
 		return self.heuristic < other.heuristic and self.recently_added and not other.recently_added
@@ -36,6 +36,8 @@ class State:
 			return 0
 
 	def generate_children(self, forbidden_states):
+		if len(self.children) != 0:
+			return
 		digit_list = [2,1,0]
 		if self.parent is not None:
 			digit_list.remove(self._last_changed_digit())
@@ -53,6 +55,8 @@ class State:
 		return
 
 	def generate_children_with_heuristic(self, forbidden_states, end_state):
+		if len(self.children) != 0:
+			return
 		digit_list = [2,1,0]
 		if self.parent is not None:
 			digit_list.remove(self._last_changed_digit())
@@ -127,7 +131,9 @@ class ThreeDigitsSolver:
 				return
 
 			for state in current_state.children:
+				state.generate_children(self.forbidden_states)
 				if state not in visited:
+					#print(repr(state) + " " + repr(state.children))
 					seen.append(state)
 					visited.append(state)
 
@@ -165,6 +171,7 @@ class ThreeDigitsSolver:
 
 			dfs_list = []
 			for state in current_state.children:
+				state.generate_children(self.forbidden_states)
 				if state not in visited:
 					dfs_list.append(state)
 					visited.append(state)
@@ -188,6 +195,7 @@ class ThreeDigitsSolver:
 	def greedy(self):
 		expanded = []
 		fringe = [self.start_state]
+		visited = [self.start_state]
 		heapq.heapify(fringe)
 
 		while len(expanded) <= 1000:
@@ -206,9 +214,12 @@ class ThreeDigitsSolver:
 
 			current_state.generate_children_with_heuristic(self.forbidden_states, self.end_state)
 			for child in current_state.children:
-				child.recently_added = True
-				heapq.heappush(fringe, child)
-				child.recently_added = False
+				child.generate_children(self.forbidden_states)
+				if child not in visited:
+					child.recently_added = True
+					heapq.heappush(fringe, child)
+					child.recently_added = False
+					visited.append(child)
 
 
 	def a_star(self):
@@ -251,6 +262,9 @@ class ThreeDigitsSolver:
 
 			dfs_list = []
 			for state in current_state.children:
+				# only generate children to check if its visited if there is depth left
+				if d > 0:
+					state.generate_children(self.forbidden_states)
 				if state not in visited:
 					dfs_list.append(state)
 					visited.append(state)
@@ -302,3 +316,6 @@ def main():
 
 if __name__ == "__main__":
 	main()
+
+#345-555
+#(1)345, (2)245, (3)445, (4)335, (5)355, (6)344, (7)346, (8)235, (9)255, (10)244, (11)246, (12)435, (13)455, (14)444, (15)446, (16)235, (17)435, (18)334, (19)336, (20)255, (21)455, (22)354, (23)356, (24)244, (25)444, (26)334, (27)354, (28)246, (29)446, (30)336, (31)356, (32)135, (33)335, (34)234, (35)236, (36)155, (37)355, (38)254, (39)256, (40)144, (41)344, (42)234, (43)254, (44)146, (45)346, (46)236, (47)256, (48)335, (49)535, (50)434, (51)436, (52)355, (53)555
