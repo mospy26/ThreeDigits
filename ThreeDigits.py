@@ -1,11 +1,13 @@
 import sys
+import heapq
 
 class State:
-	def __init__(self, state, parent = None, heuristic = 0):
+	def __init__(self, state, parent = None, heuristic = 99):
 		self.state = state
 		self.parent = parent
 		self.heuristic = heuristic
 		self.children = []
+		self.recently_added = False
 
 	def __repr__(self):
 		return self.state
@@ -13,6 +15,9 @@ class State:
 	def __eq__(self, other):
 		is_same_parent = False if self.parent is None or other.parent is None else self.parent.state == other.parent.state
 		return self.state == other.state and self.children == other.children and is_same_parent
+
+	def __lt__(self, other):
+		return self.heuristic < other.heuristic and self.recently_added and not other.recently_added
 
 	def _next(self, direction, arithmetic = "sub"):
 		if (self.state[0], direction, arithmetic) in [("0", 2, "sub"),("9", 2, "add")] or \
@@ -38,10 +43,31 @@ class State:
 		for i in digit_list:
 			child = self._next(i)
 			if child is not None and not self._is_forbidden(forbidden_states):
+				child.parent = self
 				self.children.append(child)
 
 			child = self._next(i, "add")
 			if child is not None and not self._is_forbidden(forbidden_states):
+				child.parent = self
+				self.children.append(child)
+		return
+
+	def generate_children_with_heuristic(self, forbidden_states, end_state):
+		digit_list = [2,1,0]
+		if self.parent is not None:
+			digit_list.remove(self._last_changed_digit())
+
+		for i in digit_list:
+			child = self._next(i)
+			if child is not None and not self._is_forbidden(forbidden_states):
+				child.heuristic = child._heuristic(end_state)
+				child.parent = self
+				self.children.append(child)
+
+			child = self._next(i, "add")
+			if child is not None and not self._is_forbidden(forbidden_states):
+				child.heuristic = child._heuristic(end_state)
+				child.parent = self
 				self.children.append(child)
 		return
 
@@ -52,6 +78,9 @@ class State:
 			if self.state == forbidden_state.state:
 				return True
 		return False
+
+	def _heuristic(self, end_state):
+		return None if self.parent is None else sum(abs(int(d2) - int(d1)) for (d1,d2) in zip(self.state, end_state.state))
 
 
 class ThreeDigitsSolver:
@@ -157,7 +186,30 @@ class ThreeDigitsSolver:
 				depth += 1
 
 	def greedy(self):
-		pass
+		expanded = []
+		fringe = [self.start_state]
+		heapq.heapify(fringe)
+
+		while len(expanded) <= 1000:
+			current_state = fringe.pop(0)
+			expanded.append(current_state)
+
+			if self.end_state.state == current_state.state:
+				path = []
+				st = current_state
+				while st is not None:
+					path.insert(0, st)
+					st = st.parent
+				self.result[0] = repr(path).replace(" ", "")[1:-1]
+				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+				return
+
+			current_state.generate_children_with_heuristic(self.forbidden_states, self.end_state)
+			for child in current_state.children:
+				child.recently_added = True
+				heapq.heappush(fringe, child)
+				child.recently_added = False
+
 
 	def a_star(self):
 		pass
