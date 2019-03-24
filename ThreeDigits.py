@@ -70,6 +70,12 @@ class ThreeDigitsSolver:
 		print(self.result[0] + "\n" + self.result[1])
 
 	def BFS(self):
+
+		if self.end_state.state == self.start_state.state:
+			self.result[0] = self.start_state.state
+			self.result[1] = repr(self.start_state.state).replace(" ", "")[1:-1]
+			return
+
 		seen = [self.start_state]
 		visited = [self.start_state]
 
@@ -101,6 +107,12 @@ class ThreeDigitsSolver:
 
 
 	def DFS(self):
+
+		if self.end_state.state == self.start_state.state:
+			self.result[0] = self.start_state.state
+			self.result[1] = repr(self.start_state.state).replace(" ", "")[1:-1]
+			return
+
 		seen = [self.start_state]
 		visited = [self.start_state]
 
@@ -135,7 +147,13 @@ class ThreeDigitsSolver:
 		return
 
 	def IDS(self):
-		pass
+		depth = 0
+		expanded = []
+		while len(expanded) <= 1000:
+			if self._depth_limited_search(expanded, depth):
+				return
+			else:
+				depth += 1
 
 	def greedy(self):
 		pass
@@ -145,6 +163,53 @@ class ThreeDigitsSolver:
 
 	def hill_climbing(self):
 		pass
+
+	def _depth_limited_search(self, expanded, depth):
+		seen = [self.start_state]
+		visited = [self.start_state]
+
+		if self.end_state.state == self.start_state.state:
+			self.result[0] = self.start_state.state
+			self.result[1] = repr(self.start_state.state).replace(" ", "")[1:-1]
+			return True
+
+		d = depth
+
+		if d == 0:
+			expanded.append(seen.pop(0))
+
+		while len(seen) != 0 and len(expanded) <= 1000:
+			current_state = seen.pop(0)
+			d -= 1
+			expanded.append(current_state)
+
+			if self.end_state.state == current_state.state:
+				path = []
+				st = current_state
+				while st is not None:
+					path.insert(0, st)
+					st = st.parent
+				self.result[0] = repr(path).replace(" ", "")[1:-1]
+				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+				return True
+
+			dfs_list = []
+			if d >= 0:
+				current_state.generate_children(self.forbidden_states)
+				for state in current_state.children:
+					if state not in visited:
+						dfs_list.append(state)
+						visited.append(state)
+				for item in reversed(dfs_list):
+					seen.insert(0, item)
+				dfs_list = []
+
+		#expanded = []
+		# += reversed(seen)
+
+		self.result[0] = "No Solution Found"
+		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+		return False
 
 	algorithms = { \
 		"B" : BFS, \
