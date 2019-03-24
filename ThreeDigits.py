@@ -179,8 +179,11 @@ class ThreeDigitsSolver:
 			expanded.append(seen.pop(0))
 
 		while len(seen) != 0 and len(expanded) <= 1000:
-			current_state = seen.pop(0)
+			if d > 0:
+				for state in seen:
+					state.generate_children(self.forbidden_states)
 			d -= 1
+			current_state = seen.pop(0)
 			expanded.append(current_state)
 
 			if self.end_state.state == current_state.state:
@@ -194,15 +197,12 @@ class ThreeDigitsSolver:
 				return True
 
 			dfs_list = []
-			if d >= 0:
-				current_state.generate_children(self.forbidden_states)
-				for state in current_state.children:
-					if state not in visited:
-						dfs_list.append(state)
-						visited.append(state)
-				for item in reversed(dfs_list):
-					seen.insert(0, item)
-				dfs_list = []
+			for state in current_state.children:
+				if state not in visited:
+					dfs_list.append(state)
+					visited.append(state)
+			for item in reversed(dfs_list):
+				seen.insert(0, item)
 
 		#expanded = []
 		# += reversed(seen)
