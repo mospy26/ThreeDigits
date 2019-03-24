@@ -128,6 +128,7 @@ class ThreeDigitsSolver:
 					visited.append(state)
 				for item in reversed(dfs_list):
 					seen.insert(0, item)
+			dfs_list = []
 
 		self.result[0] = "No Solution Found"
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
