@@ -2,7 +2,7 @@ import sys
 import heapq
 
 class State:
-	def __init__(self, state, parent = None, heuristic = 99):
+	def __init__(self, state, parent = None, heuristic = -1):
 		self.state = state
 		self.parent = parent
 		self.heuristic = heuristic
@@ -13,19 +13,32 @@ class State:
 		return self.state
 
 	def __eq__(self, other):
-		#is_same_parent = False if self.parent is None or other.parent is None else self.parent.state == other.parent.state
-		return self.state == other.state and self.children == other.children #and is_same_parent
+		# if self.state == '011' and other.state == '011':
+		# 	print(self.state + ":" + repr(self.children))
+		# 	print(other.state + ":" + repr(other.children))
+		# 	print(self.state == other.state and self._have_same_children(other))
+		return self.state == other.state and self._have_same_children(other)
 
 	def __lt__(self, other):
-		return self.heuristic < other.heuristic and self.recently_added and not other.recently_added
+		if self.heuristic < other.heuristic:
+			return True
+		elif self.heuristic == other.heuristic:
+			return self.recently_added and not other.recently_added
+
+	def _have_same_children(self, other):
+		if len(self.children) != len(other.children):
+			return False
+		for (self_child, other_child) in zip(self.children, other.children):
+			if self_child.state != other_child.state:
+				return False
+		return True
 
 	def _next(self, direction, arithmetic = "sub"):
-		if (self.state[0], direction, arithmetic) in [("0", 2, "sub"),("9", 2, "add")] or \
+		return None if (self.state[0], direction, arithmetic) in [("0", 2, "sub"),("9", 2, "add")] or \
 			(self.state[1], direction, arithmetic) in [("0", 1, "sub"),("9", 1, "add")] or \
-			(self.state[2], direction, arithmetic) in [("0", 0, "sub"),("9", 0, "add")]:
-				return None
-		return State(str(int(self.state) + pow(10,direction)).zfill(3), self, 0) if arithmetic is "add" else \
-			State(str(int(self.state) - pow(10,direction)).zfill(3), self, 0)
+			(self.state[2], direction, arithmetic) in [("0", 0, "sub"),("9", 0, "add")] \
+			else State(str(int(self.state) + pow(10,direction)).zfill(3), self, 0) if arithmetic is "add" else \
+				State(str(int(self.state) - pow(10,direction)).zfill(3), self, 0)
 
 	def _last_changed_digit(self):
 		if int(self.parent.state) - int(self.state) in [-100, 100]:
@@ -35,7 +48,7 @@ class State:
 		if int(self.parent.state) - int(self.state) in [-1, 1]:
 			return 0
 
-	def generate_children(self, forbidden_states):
+	def generate_children(self, forbidden_states, end_state, algorithm):
 		if len(self.children) != 0:
 			return
 		digit_list = [2,1,0]
@@ -43,37 +56,12 @@ class State:
 			digit_list.remove(self._last_changed_digit())
 
 		for i in digit_list:
-			child = self._next(i)
-			if child is not None and not self._is_forbidden(forbidden_states):
-				child.parent = self
-				self.children.append(child)
-
-			child = self._next(i, "add")
-			if child is not None and not self._is_forbidden(forbidden_states):
-				child.parent = self
-				self.children.append(child)
-		return
-
-	def generate_children_with_heuristic(self, forbidden_states, end_state):
-		if len(self.children) != 0:
-			return
-		digit_list = [2,1,0]
-		if self.parent is not None:
-			digit_list.remove(self._last_changed_digit())
-
-		for i in digit_list:
-			child = self._next(i)
-			if child is not None and not self._is_forbidden(forbidden_states):
-				child.heuristic = child._heuristic(end_state)
-				child.parent = self
-				self.children.append(child)
-
-			child = self._next(i, "add")
-			if child is not None and not self._is_forbidden(forbidden_states):
-				child.heuristic = child._heuristic(end_state)
-				child.parent = self
-				self.children.append(child)
-		return
+			for arithmetic in ["sub", "add"]:
+				child = self._next(i, arithmetic)
+				if child is not None and not child._is_forbidden(forbidden_states):
+					child.heuristic = child._heuristic(end_state) if algorithm in ["G", "A", "H"] else -1
+					child.parent = self
+					self.children.append(child)
 
 	def _is_forbidden(self, forbidden_states):
 		if forbidden_states is None:
@@ -97,6 +85,9 @@ class ThreeDigitsSolver:
 		self.result = ["No solution Found", ""]
 
 	def solve(self):
+		if self.end_state.state == self.start_state.state:
+			self.result = [self.start_state.state, repr(self.start_state.state).replace(" ", "")[1:-1]]
+			return
 		self.algorithms[self.algorithm](self)
 		self._print_result()
 
@@ -104,20 +95,13 @@ class ThreeDigitsSolver:
 		print(self.result[0] + "\n" + self.result[1])
 
 	def BFS(self):
-
-		if self.end_state.state == self.start_state.state:
-			self.result[0] = self.start_state.state
-			self.result[1] = repr(self.start_state.state).replace(" ", "")[1:-1]
-			return
-
 		seen = [self.start_state]
 		visited = [self.start_state]
-
 		expanded = []
 
 		while len(seen) != 0 and len(expanded) <= 1000:
 			current_state = seen.pop(0)
-			current_state.generate_children(self.forbidden_states)
+			current_state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 			expanded.append(current_state)
 
 			if self.end_state.state == current_state.state:
@@ -131,9 +115,8 @@ class ThreeDigitsSolver:
 				return
 
 			for state in current_state.children:
-				state.generate_children(self.forbidden_states)
+				state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 				if state not in visited:
-					#print(repr(state) + " " + repr(state.children))
 					seen.append(state)
 					visited.append(state)
 
@@ -141,47 +124,9 @@ class ThreeDigitsSolver:
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return
 
-
 	def DFS(self):
-
-		if self.end_state.state == self.start_state.state:
-			self.result[0] = self.start_state.state
-			self.result[1] = repr(self.start_state.state).replace(" ", "")[1:-1]
-			return
-
-		seen = [self.start_state]
-		visited = [self.start_state]
-
 		expanded = []
-
-		while len(seen) != 0 and len(expanded) <= 1000:
-			current_state = seen.pop(0)
-			current_state.generate_children(self.forbidden_states)
-			expanded.append(current_state)
-
-			if self.end_state.state == current_state.state:
-				path = []
-				st = current_state
-				while st is not None:
-					path.insert(0, st)
-					st = st.parent
-				self.result[0] = repr(path).replace(" ", "")[1:-1]
-				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
-				return
-
-			dfs_list = []
-			for state in current_state.children:
-				state.generate_children(self.forbidden_states)
-				if state not in visited:
-					dfs_list.append(state)
-					visited.append(state)
-				for item in reversed(dfs_list):
-					seen.insert(0, item)
-			dfs_list = []
-
-		self.result[0] = "No Solution Found"
-		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
-		return
+		self._depth_limited_search(expanded, -1)
 
 	def IDS(self):
 		depth = 0
@@ -198,7 +143,7 @@ class ThreeDigitsSolver:
 		visited = [self.start_state]
 		heapq.heapify(fringe)
 
-		while len(expanded) <= 1000:
+		while len(fringe) > 0 and len(expanded) <= 1000:
 			current_state = fringe.pop(0)
 			expanded.append(current_state)
 
@@ -212,15 +157,19 @@ class ThreeDigitsSolver:
 				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 				return
 
-			current_state.generate_children_with_heuristic(self.forbidden_states, self.end_state)
+			current_state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
+
 			for child in current_state.children:
-				child.generate_children(self.forbidden_states)
+				child.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 				if child not in visited:
 					child.recently_added = True
 					heapq.heappush(fringe, child)
+					heapq.heapify(fringe)
 					child.recently_added = False
 					visited.append(child)
 
+		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+		return
 
 	def a_star(self):
 		pass
@@ -229,26 +178,22 @@ class ThreeDigitsSolver:
 		pass
 
 	def _depth_limited_search(self, expanded, depth):
-		seen = [self.start_state]
+		fringe = [self.start_state]
 		visited = [self.start_state]
-
-		if self.end_state.state == self.start_state.state:
-			self.result[0] = self.start_state.state
-			self.result[1] = repr(self.start_state.state).replace(" ", "")[1:-1]
-			return True
-
 		d = depth
 
 		if d == 0:
-			expanded.append(seen.pop(0))
+			expanded.append(fringe.pop(0))
 
-		while len(seen) != 0 and len(expanded) <= 1000:
-			if d > 0:
-				for state in seen:
-					state.generate_children(self.forbidden_states)
-			d -= 1
-			current_state = seen.pop(0)
+		while len(fringe) > 0 and len(expanded) <= 1000:
+			if d != 0:
+				for states in fringe:
+					states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
+				d -= 1
+
+			current_state = fringe.pop(0)
 			expanded.append(current_state)
+			visited.append(current_state)
 
 			if self.end_state.state == current_state.state:
 				path = []
@@ -261,36 +206,87 @@ class ThreeDigitsSolver:
 				return True
 
 			dfs_list = []
-			for state in current_state.children:
-				# only generate children to check if its visited if there is depth left
-				if d > 0:
-					state.generate_children(self.forbidden_states)
-				if state not in visited:
-					dfs_list.append(state)
-					visited.append(state)
-			for item in reversed(dfs_list):
-				seen.insert(0, item)
+			for states in current_state.children:
+				if d != 0:
+					states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 
-		#expanded = []
-		# += reversed(seen)
+				if len(dfs_list) == 0 and states.state == self.end_state.state and len(expanded) <= 1000:
+					expanded.append(states)
+					path = []
+					st = states
+					while st is not None:
+						path.insert(0, st)
+						st = st.parent
+					self.result[0] = repr(path).replace(" ", "")[1:-1]
+					self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+					return
+
+				if states not in visited:
+					dfs_list.append(states)
+					#visited.append(states)
+			for item in reversed(dfs_list):
+					fringe.insert(0, item)
 
 		self.result[0] = "No Solution Found"
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return False
 
-	algorithms = { \
-		"B" : BFS, \
-		"D" : DFS, \
-		"I" : IDS, \
-		"G" : greedy, \
-		"A" : a_star, \
-		"H" : hill_climbing
-	}
+
+
+		# if d == 0:
+		# 	expanded.append(seen.pop(0))
+		#
+		# while len(seen) != 0 and len(expanded) <= 1000:
+		# 	if d != 0:
+		# 		for states in seen:
+		# 			states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
+		# 		d -= 1
+		# 	current_state = seen.pop(0)
+		# 	expanded.append(current_state)
+		#
+		# 	if self.end_state.state == current_state.state:
+		# 		path = []
+		# 		st = current_state
+		# 		while st is not None:
+		# 			path.insert(0, st)
+		# 			st = st.parent
+		# 		self.result[0] = repr(path).replace(" ", "")[1:-1]
+		# 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+		# 		return True
+		#
+		# 	dfs_list = []
+		# 	for states in current_state.children:
+		# 		# only generate children to check if its visited if there is depth left
+		# 		if d != 0:
+		# 		 	states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
+		#
+		# 		if len(dfs_list) == 0 and states.state == self.end_state.state:
+		# 			expanded.append(states)
+		# 			path = []
+		# 			st = states
+		# 			while st is not None:
+		# 				path.insert(0, st)
+		# 				st = st.parent
+		# 			self.result[0] = repr(path).replace(" ", "")[1:-1]
+		# 			self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+		# 			return
+		#
+		# 		if states not in visited:
+		# 			dfs_list.append(states)
+		# 			visited.append(states)
+		# 	for item in reversed(dfs_list):
+		# 		seen.insert(0, item)
+		#
+		# self.result[0] = "No Solution Found"
+		# self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+		# return False
+
+	algorithms = {"B" : BFS, "D" : DFS, "I" : IDS, "G" : greedy, "A" : a_star, "H" : hill_climbing}
 
 def main():
 	try:
 		algorithm = sys.argv[1]
-		if algorithm not in ["B", "D", "I","G", "A", "H"]:
+		if algorithm not in ["B", "D", "I", "G", "A", "H"]:
 			raise ValueError("No algorithm is a acronym for the specified argument " + algorithm)
 	except:
 		sys.exit(-1)
@@ -316,6 +312,3 @@ def main():
 
 if __name__ == "__main__":
 	main()
-
-#345-555
-#(1)345, (2)245, (3)445, (4)335, (5)355, (6)344, (7)346, (8)235, (9)255, (10)244, (11)246, (12)435, (13)455, (14)444, (15)446, (16)235, (17)435, (18)334, (19)336, (20)255, (21)455, (22)354, (23)356, (24)244, (25)444, (26)334, (27)354, (28)246, (29)446, (30)336, (31)356, (32)135, (33)335, (34)234, (35)236, (36)155, (37)355, (38)254, (39)256, (40)144, (41)344, (42)234, (43)254, (44)146, (45)346, (46)236, (47)256, (48)335, (49)535, (50)434, (51)436, (52)355, (53)555
