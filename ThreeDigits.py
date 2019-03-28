@@ -1,19 +1,22 @@
 import sys
 import heapq
 
+FORBIDDEN = []
+
 class State:
 	def __init__(self, state, parent = None, heuristic = -1):
 		self.state = state
 		self.parent = parent
 		self.heuristic = heuristic
 		self.children = []
+		self.depth = 0
 		self.recently_added = False
 
 	def __repr__(self):
 		return self.state
 
 	def __eq__(self, other):
-		# if self.state == '011' and other.state == '011':
+		# if self.state == '210' and other.state == '210':
 		# 	print(self.state + ":" + repr(self.children))
 		# 	print(other.state + ":" + repr(other.children))
 		# 	print(self.state == other.state and self._have_same_children(other))
@@ -26,6 +29,8 @@ class State:
 			return self.recently_added and not other.recently_added
 
 	def _have_same_children(self, other):
+		#if len(self.children) == 0 and len(other.children) == 0:
+			#return False
 		if len(self.children) != len(other.children):
 			return False
 		for (self_child, other_child) in zip(self.children, other.children):
@@ -59,7 +64,8 @@ class State:
 			for arithmetic in ["sub", "add"]:
 				child = self._next(i, arithmetic)
 				if child is not None and not child._is_forbidden(forbidden_states):
-					child.heuristic = child._heuristic(end_state) if algorithm in ["G", "A", "H"] else -1
+					child.depth = self.depth + 1
+					child.heuristic =  -1 if algorithm not in ["G", "A", "H"] else child._heuristic(end_state)
 					child.parent = self
 					self.children.append(child)
 
@@ -72,7 +78,7 @@ class State:
 		return False
 
 	def _heuristic(self, end_state):
-		return None if self.parent is None else sum(abs(int(d2) - int(d1)) for (d1,d2) in zip(self.state, end_state.state))
+		return None if self.parent is None or end_state is None else sum(abs(int(d2) - int(d1)) for (d1,d2) in zip(self.state, end_state.state))
 
 
 class ThreeDigitsSolver:
@@ -126,7 +132,7 @@ class ThreeDigitsSolver:
 
 	def DFS(self):
 		expanded = []
-		self._depth_limited_search(expanded, -1)
+		self._depth_limited_search(expanded, sys.maxsize)
 
 	def IDS(self):
 		depth = 0
@@ -186,11 +192,17 @@ class ThreeDigitsSolver:
 			expanded.append(fringe.pop(0))
 
 		while len(fringe) > 0 and len(expanded) <= 1000:
+			# print()
+			#print(fringe)
+			#print(d)
 			if d != 0:
-				for states in fringe:
+				#print(list(filter(lambda x: x.depth == depth - d, fringe)))
+				for states in filter(lambda x: x.depth == depth-d, fringe):
 					states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
-				d -= 1
+				if len(list(filter(lambda x: x.depth == depth-d, fringe))) == 0:
+					d -= 1
 
+			#print(fringe)
 			current_state = fringe.pop(0)
 			expanded.append(current_state)
 			visited.append(current_state)
@@ -207,79 +219,32 @@ class ThreeDigitsSolver:
 
 			dfs_list = []
 			for states in current_state.children:
-				if d != 0:
-					states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
+				#if(states.state == '335'):
+					#print(states.state + " " + repr(states.children))
+					#print(states in visited)
+				#if states.depth != depth: # d != 0:
+				states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 
-				if len(dfs_list) == 0 and states.state == self.end_state.state and len(expanded) <= 1000:
-					expanded.append(states)
-					path = []
-					st = states
-					while st is not None:
-						path.insert(0, st)
-						st = st.parent
-					self.result[0] = repr(path).replace(" ", "")[1:-1]
-					self.result[1] = repr(expanded).replace(" ", "")[1:-1]
-					return
+				if states not in visited and states.depth <= depth:
 
-				if states not in visited:
+					if len(dfs_list) == 0 and states.state == self.end_state.state and len(expanded) <= 1000:
+						expanded += dfs_list
+						expanded.append(states)
+						path = []
+						st = states
+						while st is not None:
+							path.insert(0, st)
+							st = st.parent
+						self.result[0] = repr(path).replace(" ", "")[1:-1]
+						self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+						return True
+
 					dfs_list.append(states)
-					#visited.append(states)
-			for item in reversed(dfs_list):
-					fringe.insert(0, item)
+			fringe = dfs_list + fringe
 
 		self.result[0] = "No Solution Found"
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return False
-
-
-
-		# if d == 0:
-		# 	expanded.append(seen.pop(0))
-		#
-		# while len(seen) != 0 and len(expanded) <= 1000:
-		# 	if d != 0:
-		# 		for states in seen:
-		# 			states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
-		# 		d -= 1
-		# 	current_state = seen.pop(0)
-		# 	expanded.append(current_state)
-		#
-		# 	if self.end_state.state == current_state.state:
-		# 		path = []
-		# 		st = current_state
-		# 		while st is not None:
-		# 			path.insert(0, st)
-		# 			st = st.parent
-		# 		self.result[0] = repr(path).replace(" ", "")[1:-1]
-		# 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
-		# 		return True
-		#
-		# 	dfs_list = []
-		# 	for states in current_state.children:
-		# 		# only generate children to check if its visited if there is depth left
-		# 		if d != 0:
-		# 		 	states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
-		#
-		# 		if len(dfs_list) == 0 and states.state == self.end_state.state:
-		# 			expanded.append(states)
-		# 			path = []
-		# 			st = states
-		# 			while st is not None:
-		# 				path.insert(0, st)
-		# 				st = st.parent
-		# 			self.result[0] = repr(path).replace(" ", "")[1:-1]
-		# 			self.result[1] = repr(expanded).replace(" ", "")[1:-1]
-		# 			return
-		#
-		# 		if states not in visited:
-		# 			dfs_list.append(states)
-		# 			visited.append(states)
-		# 	for item in reversed(dfs_list):
-		# 		seen.insert(0, item)
-		#
-		# self.result[0] = "No Solution Found"
-		# self.result[1] = repr(expanded).replace(" ", "")[1:-1]
-		# return False
 
 	algorithms = {"B" : BFS, "D" : DFS, "I" : IDS, "G" : greedy, "A" : a_star, "H" : hill_climbing}
 
@@ -303,6 +268,7 @@ def main():
 	try:
 		forbidden = lines[2].split(",")
 		forbidden_states = [State(state, None, 0) for state in forbidden]
+		FORBIDDEN = forbidden_states
 		solver = ThreeDigitsSolver(lines[0], lines[1], forbidden_states[:], algorithm)
 	except:
 		solver = ThreeDigitsSolver(lines[0], lines[1], None, algorithm)
