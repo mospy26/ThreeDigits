@@ -5,7 +5,7 @@ class State:
 	def __init__(self, state, parent = None, heuristic = -1):
 		self.state = state
 		self.parent = parent
-		self.heuristic = heuristic
+		self.heuristic = -1
 		self.children = []
 		self.depth = 0
 		self.recently_added = False
@@ -61,7 +61,7 @@ class State:
 				child = self._next(i, arithmetic)
 				if child is not None and not child._is_forbidden(forbidden_states):
 					child.depth = self.depth + 1
-					child.heuristic =  -1 if algorithm not in ["G", "A", "H"] else child._heuristic(end_state)
+					child.heuristic = child._heuristic(end_state)
 					child.parent = self
 					self.children.append(child)
 
@@ -74,7 +74,8 @@ class State:
 		return False
 
 	def _heuristic(self, end_state):
-		return None if self.parent is None or end_state is None else sum(abs(int(d2) - int(d1)) for (d1,d2) in zip(self.state, end_state.state))
+		return -1 if self.parent is None or end_state is None else sum(abs(int(d2) - int(d1)) for (d1,d2) in zip(self.state, end_state.state))
+		#return sum(abs(int(d2) - int(d1)) for (d1,d2) in zip(self.state, end_state.state))
 
 
 class ThreeDigitsSolver:
@@ -177,7 +178,38 @@ class ThreeDigitsSolver:
 		pass
 
 	def hill_climbing(self):
-		pass
+		minimum_heuristic = self.start_state.heuristic
+		fringe = [self.start_state]
+		expanded = []
+
+		while len(expanded) <= 1000 and len(fringe) > 0:
+			current_state = fringe.pop(0)
+
+			if current_state.heuristic > minimum_heuristic and minimum_heuristic != -1:
+				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+				return
+
+			expanded.append(current_state)
+			minimum_heuristic = current_state.heuristic
+
+			current_state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
+			fringe = []
+			fringe += current_state.children
+			heapq.heapify(fringe)
+
+			if current_state.state == self.end_state.state:
+				path = []
+				st = current_state
+				while st is not None:
+					path.insert(0, st)
+					st = st.parent
+				self.result[0] = repr(path).replace(" ", "")[1:-1]
+				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+				return
+
+		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+		return
+
 
 	def _depth_limited_search(self, expanded, depth):
 		fringe = [self.start_state]
@@ -188,16 +220,9 @@ class ThreeDigitsSolver:
 			expanded.append(fringe.pop(0))
 
 		while len(fringe) > 0 and len(expanded) < 1000:
-			# print()
-			#print(fringe)
-			if d != 0:
-				#print(list(filter(lambda x: x.depth == depth - d, fringe)))
-				for states in filter(lambda x: x.depth == depth-d, fringe):
-					states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
-				if len(list(filter(lambda x: x.depth == depth-d, fringe))) == 0:
-					d -= 1
+			for states in fringe:
+				states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 
-			#print(fringe)
 			current_state = fringe.pop(0)
 			expanded.append(current_state)
 			visited.append(current_state)
@@ -213,26 +238,21 @@ class ThreeDigitsSolver:
 				return True
 
 			dfs_list = []
-			#print(current_state.depth, end="")
 			for states in current_state.children:
-				#if(states.state == '335'):
-					#print(states.state + " " + repr(states.children))
-					#print(states in visited)
-				#if states.depth != depth: # d != 0:
 				states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 
 				if states not in visited and states.depth <= depth:
 
-					if len(dfs_list) == 0 and states.state == self.end_state.state and len(expanded) < 1000:
-						expanded.append(states)
-						path = []
-						st = states
-						while st is not None:
-							path.insert(0, st)
-							st = st.parent
-						self.result[0] = repr(path).replace(" ", "")[1:-1]
-						self.result[1] = repr(expanded).replace(" ", "")[1:-1]
-						return True
+					# if len(dfs_list) == 0 and states.state == self.end_state.state and len(expanded) < 1000:
+					# 	expanded.append(states)
+					# 	path = []
+					# 	st = states
+					# 	while st is not None:
+					# 		path.insert(0, st)
+					# 		st = st.parent
+					# 	self.result[0] = repr(path).replace(" ", "")[1:-1]
+					# 	self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+					# 	return True
 
 					dfs_list.append(states)
 			fringe = dfs_list + fringe
