@@ -8,23 +8,19 @@ class State:
 		self.heuristic = -1
 		self.children = []
 		self.depth = 0
-		self.recently_added = False
+		self.recently_added = 1
 
 	def __repr__(self):
 		return self.state
 
 	def __eq__(self, other):
-		# if self.state == '210' and other.state == '210':
-		# 	print(self.state + ":" + repr(self.children))
-		# 	print(other.state + ":" + repr(other.children))
-		# 	print(self.state == other.state and self._have_same_children(other))
 		return self.state == other.state and self._have_same_children(other)
 
 	def __lt__(self, other):
 		if self.heuristic < other.heuristic:
 			return True
 		elif self.heuristic == other.heuristic:
-			return self.recently_added and not other.recently_added
+			return self.recently_added < other.recently_added
 
 	def _have_same_children(self, other):
 		if len(self.children) != len(other.children):
@@ -144,7 +140,6 @@ class ThreeDigitsSolver:
 		expanded = []
 		fringe = [self.start_state]
 		visited = [self.start_state]
-		heapq.heapify(fringe)
 
 		while len(fringe) > 0 and len(expanded) <= 1000:
 			current_state = fringe.pop(0)
@@ -165,17 +160,17 @@ class ThreeDigitsSolver:
 			for child in current_state.children:
 				child.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 				if child not in visited:
-					child.recently_added = True
+					child.recently_added = 0
 					heapq.heappush(fringe, child)
-					heapq.heapify(fringe)
-					child.recently_added = False
+					if self.algorithm == "G":
+						heapq.heapify(fringe)
+					elif self.algorithm == "A":
+						fringe = sorted(fringe, key=lambda e: (e.heuristic+e.depth, e.recently_added))
+					child.recently_added = 1
 					visited.append(child)
 
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return
-
-	def a_star(self):
-		pass
 
 	def hill_climbing(self):
 		minimum_heuristic = self.start_state.heuristic
@@ -242,18 +237,6 @@ class ThreeDigitsSolver:
 				states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 
 				if states not in visited and states.depth <= depth:
-
-					# if len(dfs_list) == 0 and states.state == self.end_state.state and len(expanded) < 1000:
-					# 	expanded.append(states)
-					# 	path = []
-					# 	st = states
-					# 	while st is not None:
-					# 		path.insert(0, st)
-					# 		st = st.parent
-					# 	self.result[0] = repr(path).replace(" ", "")[1:-1]
-					# 	self.result[1] = repr(expanded).replace(" ", "")[1:-1]
-					# 	return True
-
 					dfs_list.append(states)
 			fringe = dfs_list + fringe
 
@@ -261,7 +244,7 @@ class ThreeDigitsSolver:
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return False
 
-	algorithms = {"B" : BFS, "D" : DFS, "I" : IDS, "G" : greedy, "A" : a_star, "H" : hill_climbing}
+	algorithms = {"B" : BFS, "D" : DFS, "I" : IDS, "G" : greedy, "A" : greedy, "H" : hill_climbing}
 
 def main():
 	try:
