@@ -1,8 +1,6 @@
 import sys
 import heapq
 
-FORBIDDEN = []
-
 class State:
 	def __init__(self, state, parent = None, heuristic = -1):
 		self.state = state
@@ -29,8 +27,6 @@ class State:
 			return self.recently_added and not other.recently_added
 
 	def _have_same_children(self, other):
-		#if len(self.children) == 0 and len(other.children) == 0:
-			#return False
 		if len(self.children) != len(other.children):
 			return False
 		for (self_child, other_child) in zip(self.children, other.children):
@@ -191,10 +187,9 @@ class ThreeDigitsSolver:
 		if d == 0:
 			expanded.append(fringe.pop(0))
 
-		while len(fringe) > 0 and len(expanded) <= 1000:
+		while len(fringe) > 0 and len(expanded) < 1000:
 			# print()
 			#print(fringe)
-			#print(d)
 			if d != 0:
 				#print(list(filter(lambda x: x.depth == depth - d, fringe)))
 				for states in filter(lambda x: x.depth == depth-d, fringe):
@@ -218,6 +213,7 @@ class ThreeDigitsSolver:
 				return True
 
 			dfs_list = []
+			#print(current_state.depth, end="")
 			for states in current_state.children:
 				#if(states.state == '335'):
 					#print(states.state + " " + repr(states.children))
@@ -227,8 +223,7 @@ class ThreeDigitsSolver:
 
 				if states not in visited and states.depth <= depth:
 
-					if len(dfs_list) == 0 and states.state == self.end_state.state and len(expanded) <= 1000:
-						expanded += dfs_list
+					if len(dfs_list) == 0 and states.state == self.end_state.state and len(expanded) < 1000:
 						expanded.append(states)
 						path = []
 						st = states
@@ -268,7 +263,6 @@ def main():
 	try:
 		forbidden = lines[2].split(",")
 		forbidden_states = [State(state, None, 0) for state in forbidden]
-		FORBIDDEN = forbidden_states
 		solver = ThreeDigitsSolver(lines[0], lines[1], forbidden_states[:], algorithm)
 	except:
 		solver = ThreeDigitsSolver(lines[0], lines[1], None, algorithm)
