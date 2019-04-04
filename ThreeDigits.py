@@ -1,26 +1,11 @@
 import sys
-import heapq
-
 class State:
 	def __init__(self, state, parent = None, heuristic = -1):
-		self.state = state
-		self.parent = parent
-		self.heuristic = -1
-		self.children = []
-		self.depth = 0
-		self.recently_added = 1
-
+		self.state, self.parent, self.heuristic, self.children, self.depth, self.recently_added  = state, parent, -1, [], 0, 1
 	def __repr__(self):
 		return self.state
-
 	def __eq__(self, other):
 		return self.state == other.state and self._have_same_children(other)
-
-	def __lt__(self, other):
-		if self.heuristic < other.heuristic:
-			return True
-		elif self.heuristic == other.heuristic:
-			return self.recently_added < other.recently_added
 
 	def _have_same_children(self, other):
 		if len(self.children) != len(other.children):
@@ -81,6 +66,16 @@ class ThreeDigitsSolver:
 		self.forbidden_states = forbidden_states
 		self.result = ["No solution Found", ""]
 
+	def _get_solution(self, state, expanded):
+		path = []
+		st = state
+		while st is not None:
+			path.insert(0, st)
+			st = st.parent
+		self.result[0] = repr(path).replace(" ", "")[1:-1]
+		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+		return
+
 	def solve(self):
 		if self.end_state.state == self.start_state.state:
 			self.result = [self.start_state.state, repr(self.start_state.state).replace(" ", "")[1:-1]]
@@ -138,16 +133,9 @@ class ThreeDigitsSolver:
 		while len(fringe) > 0 and len(expanded) <= 1000:
 			current_state = fringe.pop(0)
 			expanded.append(current_state)
-			visited.append(current_state)
 
 			if self.end_state.state == current_state.state:
-				path = []
-				st = current_state
-				while st is not None:
-					path.insert(0, st)
-					st = st.parent
-				self.result[0] = repr(path).replace(" ", "")[1:-1]
-				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+				self._get_solution(current_state, expanded)
 				return
 
 			current_state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
@@ -156,12 +144,10 @@ class ThreeDigitsSolver:
 				child.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 				if child not in visited:
 					child.recently_added = 0
-					heapq.heappush(fringe, child)
-					if self.algorithm == "G":
-						heapq.heapify(fringe)
-					elif self.algorithm == "A":
-						fringe = sorted(fringe, key=lambda e: (e.heuristic+e.depth, e.recently_added))
+					fringe.append(child)
+					fringe = sorted(fringe, key=lambda e: (e.heuristic, e.recently_added)) if self.algorithm == "G" else sorted(fringe, key=lambda e: (e.heuristic+e.depth, e.recently_added))
 					child.recently_added = 1
+					visited.append(child)
 
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return
@@ -182,17 +168,14 @@ class ThreeDigitsSolver:
 
 			current_state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 			fringe = []
-			fringe += current_state.children
-			heapq.heapify(fringe)
+			for child in current_state.children:
+				child.recently_added = 0
+				fringe.append(child)
+				fringe = sorted(fringe, key=lambda e: (e.heuristic, e.recently_added))
+				child.recently_added = 1
 
 			if current_state.state == self.end_state.state:
-				path = []
-				st = current_state
-				while st is not None:
-					path.insert(0, st)
-					st = st.parent
-				self.result[0] = repr(path).replace(" ", "")[1:-1]
-				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+				self._get_solution(current_state, expanded)
 				return
 
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
@@ -215,13 +198,7 @@ class ThreeDigitsSolver:
 			expanded.append(current_state)
 
 			if self.end_state.state == current_state.state:
-				path = []
-				st = current_state
-				while st is not None:
-					path.insert(0, st)
-					st = st.parent
-				self.result[0] = repr(path).replace(" ", "")[1:-1]
-				self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+				self._get_solution(current_state, expanded)
 				return True
 
 			dfs_list = []
