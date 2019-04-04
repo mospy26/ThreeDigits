@@ -95,7 +95,6 @@ class ThreeDigitsSolver:
 
 		while len(seen) != 0 and len(expanded) <= 1000:
 			current_state = seen.pop(0)
-			visited.append(current_state)
 			current_state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 			expanded.append(current_state)
 
@@ -113,6 +112,7 @@ class ThreeDigitsSolver:
 				state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 				if state not in visited:
 					seen.append(state)
+					visited.append(state)
 
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return
