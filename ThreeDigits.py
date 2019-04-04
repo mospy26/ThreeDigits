@@ -71,8 +71,6 @@ class State:
 
 	def _heuristic(self, end_state):
 		return -1 if self.parent is None or end_state is None else sum(abs(int(d2) - int(d1)) for (d1,d2) in zip(self.state, end_state.state))
-		#return sum(abs(int(d2) - int(d1)) for (d1,d2) in zip(self.state, end_state.state))
-
 
 class ThreeDigitsSolver:
 
@@ -88,9 +86,6 @@ class ThreeDigitsSolver:
 			self.result = [self.start_state.state, repr(self.start_state.state).replace(" ", "")[1:-1]]
 			return
 		self.algorithms[self.algorithm](self)
-		self._print_result()
-
-	def _print_result(self):
 		print(self.result[0] + "\n" + self.result[1])
 
 	def BFS(self):
@@ -100,6 +95,7 @@ class ThreeDigitsSolver:
 
 		while len(seen) != 0 and len(expanded) <= 1000:
 			current_state = seen.pop(0)
+			visited.append(current_state)
 			current_state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 			expanded.append(current_state)
 
@@ -117,9 +113,7 @@ class ThreeDigitsSolver:
 				state.generate_children(self.forbidden_states, self.end_state, self.algorithm)
 				if state not in visited:
 					seen.append(state)
-					visited.append(state)
 
-		self.result[0] = "No Solution Found"
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return
 
@@ -130,7 +124,7 @@ class ThreeDigitsSolver:
 	def IDS(self):
 		depth = 0
 		expanded = []
-		while len(expanded) <= 1000:
+		while len(expanded) < 1000:
 			if self._depth_limited_search(expanded, depth):
 				return
 			else:
@@ -144,6 +138,7 @@ class ThreeDigitsSolver:
 		while len(fringe) > 0 and len(expanded) <= 1000:
 			current_state = fringe.pop(0)
 			expanded.append(current_state)
+			visited.append(current_state)
 
 			if self.end_state.state == current_state.state:
 				path = []
@@ -167,15 +162,13 @@ class ThreeDigitsSolver:
 					elif self.algorithm == "A":
 						fringe = sorted(fringe, key=lambda e: (e.heuristic+e.depth, e.recently_added))
 					child.recently_added = 1
-					visited.append(child)
 
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return
 
 	def hill_climbing(self):
 		minimum_heuristic = self.start_state.heuristic
-		fringe = [self.start_state]
-		expanded = []
+		fringe, expanded = [self.start_state], []
 
 		while len(expanded) <= 1000 and len(fringe) > 0:
 			current_state = fringe.pop(0)
@@ -205,22 +198,21 @@ class ThreeDigitsSolver:
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return
 
-
 	def _depth_limited_search(self, expanded, depth):
-		fringe = [self.start_state]
-		visited = [self.start_state]
-		d = depth
-
-		if d == 0:
-			expanded.append(fringe.pop(0))
+		fringe, visited = [self.start_state], []
 
 		while len(fringe) > 0 and len(expanded) < 1000:
 			for states in fringe:
 				states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
-
 			current_state = fringe.pop(0)
-			expanded.append(current_state)
+			while current_state in visited:
+				if len(fringe) > 0:
+					current_state = fringe.pop(0)
+				else:
+					self.result[1] = repr(expanded).replace(" ", "")[1:-1]
+					return False
 			visited.append(current_state)
+			expanded.append(current_state)
 
 			if self.end_state.state == current_state.state:
 				path = []
@@ -235,25 +227,19 @@ class ThreeDigitsSolver:
 			dfs_list = []
 			for states in current_state.children:
 				states.generate_children(self.forbidden_states, self.end_state, self.algorithm)
-
 				if states not in visited and states.depth <= depth:
 					dfs_list.append(states)
 			fringe = dfs_list + fringe
 
-		self.result[0] = "No Solution Found"
 		self.result[1] = repr(expanded).replace(" ", "")[1:-1]
 		return False
 
 	algorithms = {"B" : BFS, "D" : DFS, "I" : IDS, "G" : greedy, "A" : greedy, "H" : hill_climbing}
 
 def main():
-	try:
-		algorithm = sys.argv[1]
-		if algorithm not in ["B", "D", "I", "G", "A", "H"]:
-			raise ValueError("No algorithm is a acronym for the specified argument " + algorithm)
-	except:
+	algorithm = sys.argv[1]
+	if algorithm not in ["B", "D", "I", "G", "A", "H"]:
 		sys.exit(-1)
-
 	file = sys.argv[2]
 	try:
 		with open(file) as f:
@@ -261,7 +247,6 @@ def main():
 			lines = [line.strip() for line in lines]
 	except:
 		sys.exit(-1)
-
 	solver = None
 	try:
 		forbidden = lines[2].split(",")
@@ -269,7 +254,6 @@ def main():
 		solver = ThreeDigitsSolver(lines[0], lines[1], forbidden_states[:], algorithm)
 	except:
 		solver = ThreeDigitsSolver(lines[0], lines[1], None, algorithm)
-
 	solver.solve()
 	return
 
